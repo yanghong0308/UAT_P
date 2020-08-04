@@ -2,16 +2,8 @@
 #
 # copies PyWinTypesxx.dll and PythonCOMxx.dll into the system directory,
 # and creates a pth file
-import os
-import sys
-import glob
-import shutil
-import time
-import distutils.sysconfig
-try:
-    import winreg as winreg
-except:
-    import winreg
+import os, sys, glob, shutil, time
+import winreg as winreg
 
 # Send output somewhere so it can be found if necessary...
 import tempfile
@@ -186,7 +178,7 @@ def SetPyKeyVal(key_name, value_name, value):
     finally:
         root_key.Close()
     if verbose:
-        print(("-> %s\\%s[%s]=%r" % (root_key_name, key_name, value_name, value)))
+        print("-> %s\\%s[%s]=%r" % (root_key_name, key_name, value_name, value))
 
 def RegisterCOMObjects(register = 1):
     import win32com.server.register
@@ -211,7 +203,7 @@ def RegisterPythonwin(register=True):
         Also need to remove these keys on uninstall, but there's no function
             like file_created to add registry entries to uninstall log ???
     """
-    import os
+    import os, distutils.sysconfig
 
     lib_dir = distutils.sysconfig.get_python_lib(plat_specific=1)
     classes_root=get_root_hkey()
@@ -297,19 +289,21 @@ def fixup_dbi():
         if os.path.isfile(this_pyd) and os.path.isfile(py_name):
             try:
                 if os.path.isfile(this_dest):
-                    print(("Old dbi '%s' already exists - deleting '%s'" % (this_dest, this_pyd)))
+                    print("Old dbi '%s' already exists - deleting '%s'" % (this_dest, this_pyd))
                     os.remove(this_pyd)
                 else:
                     os.rename(this_pyd, this_dest)
-                    print(("renamed '%s'->'%s.old'" % (this_pyd, this_pyd)))
+                    print("renamed '%s'->'%s.old'" % (this_pyd, this_pyd))
                     file_created(this_pyd+".old")
             except os.error as exc:
-                print(("FAILED to rename '%s': %s" % (this_pyd, exc)))
+                print("FAILED to rename '%s': %s" % (this_pyd, exc))
 
-def install(lib_dir):
+def install():
+    import distutils.sysconfig
     import traceback
     # The .pth file is now installed as a regular file.
     # Create the .pth file in the site-packages dir, and use only relative paths
+    lib_dir = distutils.sysconfig.get_python_lib(plat_specific=1)
     # We used to write a .pth directly to sys.prefix - clobber it.
     if os.path.isfile(os.path.join(sys.prefix, "pywin32.pth")):
         os.unlink(os.path.join(sys.prefix, "pywin32.pth"))
@@ -317,7 +311,7 @@ def install(lib_dir):
     # Setup the paths just in case.
     for name in "win32 win32\\lib Pythonwin".split():
         sys.path.append(os.path.join(lib_dir, name))
-    # It is possible people with old versions installed with still have
+    # It is possible people with old versions installed with still have 
     # pywintypes and pythoncom registered.  We no longer need this, and stale
     # entries hurt us.
     for name in "pythoncom pywintypes".split():
@@ -349,11 +343,11 @@ def install(lib_dir):
                 dst = os.path.join(dest_dir, base)
                 CopyTo("installing %s" % base, fname, dst)
                 if verbose:
-                    print(("Copied %s to %s" % (base, dst)))
+                    print("Copied %s to %s" % (base, dst))
                 # Register the files with the uninstaller
                 file_created(dst)
                 worked = 1
-                # If this isn't sys.prefix (ie, System32), then nuke
+                # If this isn't sys.prefix (ie, System32), then nuke 
                 # any versions that may exist in sys.prefix - having
                 # duplicates causes major headaches.
                 if dest_dir != sys.prefix:
@@ -430,7 +424,7 @@ def install(lib_dir):
     make_dir = os.path.join(lib_dir, "win32com", "gen_py")
     if not os.path.isdir(make_dir):
         if verbose:
-            print(("Creating directory %s" % (make_dir,)))
+            print("Creating directory", make_dir)
         directory_created(make_dir)
         os.mkdir(make_dir)
 
@@ -457,7 +451,7 @@ def install(lib_dir):
                 print("Shortcut to documentation created")
         else:
             if verbose:
-                print(("Can't install shortcuts - %r is not a folder" % (fldr,)))
+                print("Can't install shortcuts - %r is not a folder" % (fldr,))
     except Exception as details:
         print(details)
 
@@ -470,7 +464,9 @@ def install(lib_dir):
         pass
     print("The pywin32 extensions were successfully installed.")
 
-def uninstall(lib_dir):
+def uninstall():
+    import distutils.sysconfig
+    lib_dir = distutils.sysconfig.get_python_lib(plat_specific=1)
     # First ensure our system modules are loaded from pywin32_system, so
     # we can remove the ones we copied...
     LoadSystemModule(lib_dir, "pywintypes")
@@ -479,12 +475,12 @@ def uninstall(lib_dir):
     try:
         RegisterCOMObjects(False)
     except Exception as why:
-        print(("Failed to unregister COM objects: %s" % (why,)))
+        print("Failed to unregister COM objects:", why)
 
     try:
         RegisterPythonwin(False)
     except Exception as why:
-        print(("Failed to unregister Pythonwin: %s" % (why,)))
+        print("Failed to unregister Pythonwin:", why)
     else:
         if verbose:
             print('Unregistered Pythonwin')
@@ -495,7 +491,7 @@ def uninstall(lib_dir):
         if os.path.isdir(gen_dir):
             shutil.rmtree(gen_dir)
             if verbose:
-                print(("Removed directory %s" % (gen_dir,)))
+                print("Removed directory", gen_dir)
 
         # Remove pythonwin compiled "config" files.
         pywin_dir = os.path.join(lib_dir, "Pythonwin", "pywin")
@@ -511,9 +507,9 @@ def uninstall(lib_dir):
             os.remove(os.path.join(lib_dir, "win32", "dbi_d.pyd.old"))
         except os.error:
             pass
-
+        
     except Exception as why:
-        print(("Failed to remove misc files: %s" % (why,)))
+        print("Failed to remove misc files:", why)
 
     try:
         fldr = get_shortcuts_folder()
@@ -522,9 +518,9 @@ def uninstall(lib_dir):
             if os.path.isfile(fqlink):
                 os.remove(fqlink)
                 if verbose:
-                    print(("Removed %s" % (link,)))
+                    print("Removed", link)
     except Exception as why:
-        print(("Failed to remove shortcuts: %s" % (why,)))
+        print("Failed to remove shortcuts:", why)
     # Now remove the system32 files.
     files = glob.glob(os.path.join(lib_dir, "pywin32_system32\\*.*"))
     # Try the system32 directory first - if that fails due to "access denied",
@@ -541,13 +537,28 @@ def uninstall(lib_dir):
                         os.remove(dst)
                         worked = 1
                         if verbose:
-                            print(("Removed file %s" % (dst)))
+                            print("Removed file %s" % (dst))
                     except Exception:
-                        print(("FAILED to remove %s" % (dst,)))
+                        print("FAILED to remove", dst)
             if worked:
                 break
     except Exception as why:
-        print(("FAILED to remove system files: %s" % (why,)))
+        print("FAILED to remove system files:", why)
+
+def usage():
+    msg = \
+"""%s: A post-install script for the pywin32 extensions.
+    
+This should be run automatically after installation, but if it fails you
+can run it again with a '-install' parameter, to ensure the environment
+is setup correctly.
+
+Additional Options:
+  -wait pid : Wait for the specified process to terminate before starting.
+  -silent   : Don't display the "Abort/Retry/Ignore" dialog for files in use.
+  -quiet    : Don't display progress messages.
+"""
+    print(msg.strip() % os.path.basename(sys.argv[0]))
 
 # NOTE: If this script is run from inside the bdist_wininst created
 # binary installer or uninstaller, the command line args are either
@@ -558,80 +569,41 @@ def uninstall(lib_dir):
 # but also the installer will terminate! (Is there a way to prevent
 # this from the bdist_wininst C code?)
 
+if __name__=='__main__':
+    if len(sys.argv)==1:
+        usage()
+        sys.exit(1)
 
-def verify_destination(location):
-    if not os.path.isdir(location):
-        raise argparse.ArgumentTypeError("Path \"{}\" does not exist!".format(location))
-    return location
-
-
-if __name__ == '__main__':
-    import argparse
-
-    parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     description="""A post-install script for the pywin32 extensions.
-
-    * Typical usage:
-
-    > python pywin32_postinstall.py -install
-
-    If you installed pywin32 via a .exe installer, this should be run
-    automatically after installation, but if it fails you can run it again.
-
-    If you installed pywin32 via PIP, you almost certainly need to run this to
-    setup the environment correctly.
-
-    Execute with script with a '-install' parameter, to ensure the environment
-    is setup correctly.
-    """)
-    parser.add_argument("-install",
-                        default=False,
-                        action='store_true',
-                        help="Configure the Python environment correctly for pywin32.")
-    parser.add_argument("-remove",
-                        default=False,
-                        action='store_true',
-                        help="Try and remove everything that was installed or copied.")
-    parser.add_argument("-wait",
-                        type=int,
-                        help="Wait for the specified process to terminate before starting.")
-    parser.add_argument("-silent",
-                        default=False,
-                        action='store_true',
-                        help="Don't display the \"Abort/Retry/Ignore\" dialog for files in use.")
-    parser.add_argument("-quiet",
-                        default=False,
-                        action='store_true',
-                        help="Don't display progress messages.")
-    parser.add_argument("-destination",
-                        default=distutils.sysconfig.get_python_lib(plat_specific=1),
-                        type=verify_destination,
-                        help="Location of the PyWin32 installation")
-
-    args = parser.parse_args()
-
-    if not args.quiet:
-        print(("Parsed arguments are: {}".format(args)))
-
-    if not args.install ^ args.remove:
-        parser.error("You need to either choose to -install or -remove!")
-
-    if args.wait is not None:
-        try:
-            os.waitpid(args.wait, 0)
-        except AttributeError:
-            # Python 2.2 - no waitpid - just sleep.
-            time.sleep(3)
-        except os.error:
-            # child already dead
-            pass
-
-    silent = args.silent
-    verbose = not args.quiet
-
-    if args.install:
-        install(args.destination)
-
-    if args.remove:
-        if not is_bdist_wininst:
-            uninstall(args.destination)
+    arg_index = 1
+    while arg_index < len(sys.argv):
+        arg = sys.argv[arg_index]
+        # Hack for installing while we are in use.  Just a simple wait so the
+        # parent process can terminate.
+        if arg == "-wait":
+            arg_index += 1
+            pid = int(sys.argv[arg_index])
+            try:
+                os.waitpid(pid, 0)
+            except AttributeError:
+                # Python 2.2 - no waitpid - just sleep.
+                time.sleep(3)
+            except os.error:
+                # child already dead
+                pass
+        elif arg == "-install":
+            install()
+        elif arg == "-silent":
+            silent = 1
+        elif arg == "-quiet":
+            verbose = 0
+        elif arg == "-remove":
+            # bdist_msi calls us before uninstall, so we can undo what we
+            # previously did.  Sadly, bdist_wininst calls us *after*, so
+            # we can't do much at all.
+            if not is_bdist_wininst:
+                uninstall()
+        else:
+            print("Unknown option:", arg)
+            usage()
+            sys.exit(0)
+        arg_index += 1

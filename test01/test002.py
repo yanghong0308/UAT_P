@@ -19,3 +19,5 @@ def denglu():
 
 denglu()
 #def dakaimokuai():
+
+import win32api
